@@ -45,6 +45,7 @@ jobs:
         with:
           context: ./working/server/
           file: ./working/server/Dockerfile
+          builder: ${{ steps.buildx.outputs.name }}
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/apollotutserver:latest
           cache-from: type=local,src=/tmp/.buildx-cache
