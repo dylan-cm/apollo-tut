@@ -33,7 +33,7 @@ export const typeDefs = gql`
 
 const client: ApolloClient<NormalizedCacheObject> = new ApolloClient({
   cache,
-  uri: "http://localhost:4000/graphql",
+  uri: "https://apollo-server-uez4wqfvta-uc.a.run.app/graphql",
   headers: {
     authorization: localStorage.getItem("token") || "",
   },
