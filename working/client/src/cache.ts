@@ -5,10 +5,19 @@ export const cache: InMemoryCache = new InMemoryCache({
     Query: {
       fields: {
         isLoggedIn: {
-          read: () => isLoggedInVar()
+          read() {
+            return isLoggedInVar();
+          }
+        },
+        token: {
+          read() {
+            return token();
+          }
         },
         cartItems: {
-          read: () => cartItemsVar()
+          read() {
+            return cartItemsVar();
+          }
         },
         launches: {
           keyArgs: false,
@@ -31,6 +40,7 @@ export const cache: InMemoryCache = new InMemoryCache({
   }
 });
 
-export const isLoggedInVar = makeVar<boolean>(!!localStorage.getItem('token'));
-
+export const token = makeVar<string>('')
+export const isLoggedInVar =
+  makeVar<boolean>(!!token());
 export const cartItemsVar = makeVar<string[]>([]);

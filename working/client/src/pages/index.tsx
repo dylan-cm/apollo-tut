@@ -1,13 +1,15 @@
-import React, { Fragment } from 'react';
-import { Router } from '@reach/router';
+import React, { Fragment } from "react";
+import { Router } from "@reach/router";
 
-import Launch from './launch';
-import Launches from './launches';
-import Cart from './cart';
-import Profile from './profile';
-import { Footer, PageContainer } from '../components';
+import Launch from "./launch";
+import Launches from "./launches";
+import Cart from "./cart";
+import Profile from "./profile";
+import { Footer, PageContainer } from "../components";
 
-export default function Pages() {
+interface PageProps {}
+
+const Pages: React.FC<PageProps> = () => {
   return (
     <Fragment>
       <PageContainer>
@@ -21,4 +23,6 @@ export default function Pages() {
       <Footer />
     </Fragment>
   );
-}
+};
+
+export default Pages;

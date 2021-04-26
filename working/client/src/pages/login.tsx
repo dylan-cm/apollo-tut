@@ -2,11 +2,11 @@ import React from "react";
 import { gql, useMutation } from "@apollo/client";
 
 import { LoginForm, Loading } from "../components";
+import { isLoggedInVar, token } from "../cache";
 import * as LoginTypes from "./__generated__/login";
-import { isLoggedInVar } from "../cache";
 
 export const LOGIN_USER = gql`
-  mutation LoginUser($email: String!) {
+  mutation Login($email: String!) {
     login(email: $email) {
       id
       token
@@ -19,9 +19,9 @@ export default function Login() {
     LoginTypes.Login,
     LoginTypes.LoginVariables
   >(LOGIN_USER, {
-    onCompleted: ({ login }) => {
+    onCompleted({ login }) {
       if (login) {
-        localStorage.setItem("token", login.token as string);
+        token(login.token as string);
         localStorage.setItem("userId", login.id as string);
         isLoggedInVar(true);
       }
@@ -29,7 +29,6 @@ export default function Login() {
   });
 
   if (loading) return <Loading />;
-  if (error) return <p>ERROR: {error.message}</p>;
-
+  if (error) return <p>An error occurred</p>;
   return <LoginForm login={login} />;
 }

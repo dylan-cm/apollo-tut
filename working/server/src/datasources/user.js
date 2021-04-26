@@ -2,43 +2,71 @@ const { DataSource } = require('apollo-datasource');
 const isEmail = require('isemail');
 
 class UserAPI extends DataSource {
-  constructor({ store }) {
+  constructor({db}) {
     super();
-    this.store = store;
+    this.db = db;
   }
 
-  /**
-   * This is a function that gets called by ApolloServer when being setup.
-   * This function gets called with the datasource config including things
-   * like caches and context. We'll assign this.context to the request context
-   * here, so we can know about the user making requests
-   */
   initialize(config) {
     this.context = config.context;
   }
 
-  /**
-   * User can be called with an argument that includes email, but it doesn't
-   * have to be. If the user is already on the context, it will use that user
-   * instead
-   */
-  async findOrCreateUser({ email: emailArg } = {}) {
+  async findUser(email){
+    const users = await this.db
+      .collection('users')
+      .where('email', '==', email)
+      .get()
+      .then((snapshot) => snapshot.docs)
+
+    var user = {}
+
+    if (users && users.length){
+      user = users[0].data()
+      user.id = users[0].id;
+      return user
+    }
+  }
+  
+  async createUser(email){
+    const token = Buffer.from(email, 'ascii').toString('base64');
+    
+    const newUserId = await this.db
+      .collection('users')
+      .add({ email: email, token: token })
+      .then((docRef) => docRef.id)
+
+    const user = await this.db
+      .collection('users')
+      .doc(newUserId)
+      .get()
+      .then((doc) => {
+        var userData = doc.data()
+        userData.id = newUserId
+        return userData;
+      }) 
+    if(user) {
+      return user
+    }
+  }
+
+  async findOrCreateUser(emailArg) {
     const email =
       this.context && this.context.user ? this.context.user.email : emailArg;
     if (!email || !isEmail.validate(email)) return null;
 
-    const users = await this.store.users.findOrCreate({ where: { email } });
-    return users && users[0] ? users[0] : null;
+    var user = await this.findUser(email)
+    if(user) return user
+    
+    user = await this.createUser(email)
+    if(user) return user
+
+    throw new Error('Could not find or add user.')
   }
 
   async bookTrips({ launchIds }) {
-    const userId = this.context.user.id;
-    if (!userId) return;
-
     let results = [];
+    if(!this.context.user) return results
 
-    // for each launch id, try to book the trip and add it to the results array
-    // if successful
     for (const launchId of launchIds) {
       const res = await this.bookTrip({ launchId });
       if (res) results.push(res);
@@ -49,34 +77,69 @@ class UserAPI extends DataSource {
 
   async bookTrip({ launchId }) {
     const userId = this.context.user.id;
-    const res = await this.store.trips.findOrCreate({
-      where: { userId, launchId },
-    });
-    return res && res.length ? res[0].get() : false;
+    if (!userId) return;
+
+    const res = await this.db
+      .collection('trips')
+      .add({
+        userId: userId,
+        launchId: launchId,
+      })
+      .then((_)=> launchId)
+      .catch((_)=>{
+        return false
+      })
+      
+    return res
   }
 
   async cancelTrip({ launchId }) {
     const userId = this.context.user.id;
-    return !!this.store.trips.destroy({ where: { userId, launchId } });
+    await this.db
+    .collection('trips')
+      .where('userId', '==', userId)
+      .where('launchId', '==', launchId)
+      .get()
+      .then((snapshot)=>{
+        snapshot.forEach((trip) =>{
+          this.db.collection('trips').doc(trip.id).delete()
+        })
+      })
+    return [];
   }
 
   async getLaunchIdsByUser() {
     const userId = this.context.user.id;
-    const found = await this.store.trips.findAll({
-      where: { userId },
-    });
-    return found && found.length
-      ? found.map(l => l.dataValues.launchId).filter(l => !!l)
+    const launches = []
+    await this.db
+      .collection('trips')
+      .where('userId', '==', userId)
+      .get()
+      .then((snapshot) => {
+        snapshot.forEach(doc => {
+          launches.push(doc.data())
+        });
+      })
+    return launches && launches.length
+      ? launches.map(launch => launch.launchId)
       : [];
   }
 
   async isBookedOnLaunch({ launchId }) {
     if (!this.context || !this.context.user) return false;
     const userId = this.context.user.id;
-    const found = await this.store.trips.findAll({
-      where: { userId, launchId },
-    });
-    return found && found.length > 0;
+    const launches = []
+    await this.db
+      .collection('trips')
+      .where('userId', '==', userId)
+      .where('launchId', '==', launchId.toString())
+      .get()
+      .then((snapshot) => {
+        snapshot.forEach(doc => {
+          launches.push(doc.data())
+        });
+      })
+    return launches && launches.length > 0;
   }
 }
 
